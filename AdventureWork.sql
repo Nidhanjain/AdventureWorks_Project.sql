@@ -1,13 +1,11 @@
 USE AdventureWorks2022;
 GO
 
--- Drop stored procedures
 IF OBJECT_ID('InsertOrderDetails', 'P') IS NOT NULL DROP PROCEDURE InsertOrderDetails;
 IF OBJECT_ID('UpdateOrderDetails', 'P') IS NOT NULL DROP PROCEDURE UpdateOrderDetails;
 IF OBJECT_ID('GetOrderDetails', 'P') IS NOT NULL DROP PROCEDURE GetOrderDetails;
 IF OBJECT_ID('DeleteOrderDetails', 'P') IS NOT NULL DROP PROCEDURE DeleteOrderDetails;
 
--- Drop views
 IF OBJECT_ID('vwCustomerOrders', 'V') IS NOT NULL DROP VIEW vwCustomerOrders;
 IF OBJECT_ID('vwCustomerOrders_Yesterday', 'V') IS NOT NULL DROP VIEW vwCustomerOrders_Yesterday;
 IF OBJECT_ID('MyProducts', 'V') IS NOT NULL DROP VIEW MyProducts;
