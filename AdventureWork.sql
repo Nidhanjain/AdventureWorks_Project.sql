@@ -10,7 +10,6 @@ IF OBJECT_ID('vwCustomerOrders', 'V') IS NOT NULL DROP VIEW vwCustomerOrders;
 IF OBJECT_ID('vwCustomerOrders_Yesterday', 'V') IS NOT NULL DROP VIEW vwCustomerOrders_Yesterday;
 IF OBJECT_ID('MyProducts', 'V') IS NOT NULL DROP VIEW MyProducts;
 
--- Drop functions
 IF OBJECT_ID('FormatDate_MMDDYYYY', 'FN') IS NOT NULL DROP FUNCTION FormatDate_MMDDYYYY;
 IF OBJECT_ID('FormatDate_YYYYMMDD', 'FN') IS NOT NULL DROP FUNCTION FormatDate_YYYYMMDD;
 
@@ -21,37 +20,35 @@ GO
 
 
 CREATE PROCEDURE InsertOrderDetails
-    @OrderID INT,
+@OrderID INT,
     @ProductID INT,
+    
     @UnitPrice MONEY = NULL,
     @Quantity INT,
     @Discount FLOAT = 0
+    
 AS
 BEGIN
     DECLARE @StockQty INT, @ReorderLevel INT, @DefaultPrice MONEY;
 
-    SELECT @StockQty = p.SafetyStockLevel, 
-           @ReorderLevel = p.ReorderPoint,
-           @DefaultPrice = p.StandardCost
+    SELECT @StockQty = p.SafetyStockLevel,   @ReorderLevel = p.ReorderPoint, @DefaultPrice = p.StandardCost
     FROM Production.Product p
     WHERE p.ProductID = @ProductID;
 
     IF @StockQty < @Quantity
-    BEGIN
-        PRINT 'Insufficient stock. Order cannot be placed.';
-        RETURN;
+    BEGIN PRINT 'Insufficient stock. Order cannot be placed.';
+    RETURN;
     END
 
     IF @UnitPrice IS NULL
-        SET @UnitPrice = @DefaultPrice;
+    SET @UnitPrice = @DefaultPrice;
 
     INSERT INTO Sales.SalesOrderDetail (SalesOrderID, ProductID, OrderQty, UnitPrice, UnitPriceDiscount)
     VALUES (@OrderID, @ProductID, @Quantity, @UnitPrice, @Discount);
 
     IF @@ROWCOUNT = 0
-    BEGIN
-        PRINT 'Failed to place the order. Please try again.';
-        RETURN;
+    BEGIN PRINT 'Failed to place the order. Please try again.';
+    RETURN;
     END
 
     UPDATE Production.Product
@@ -59,15 +56,15 @@ BEGIN
     WHERE ProductID = @ProductID;
 
     IF (SELECT SafetyStockLevel FROM Production.Product WHERE ProductID = @ProductID) < @ReorderLevel
-        PRINT 'Warning: Stock has dropped below reorder level!';
+    PRINT 'Warning: Stock has dropped below reorder level!';
 END;
 GO
 
 
 CREATE PROCEDURE UpdateOrderDetails
-    @OrderID INT,
-    @ProductID INT,
-    @UnitPrice MONEY = NULL,
+@OrderID INT,
+ @ProductID INT,
+ @UnitPrice MONEY = NULL,
     @Quantity INT = NULL,
     @Discount FLOAT = NULL
 AS
@@ -77,8 +74,8 @@ BEGIN
         WHERE SalesOrderID = @OrderID AND ProductID = @ProductID
     )
     BEGIN
-        PRINT 'Invalid OrderID or ProductID.';
-        RETURN;
+     PRINT 'Invalid OrderID or ProductID.';
+     RETURN;
     END
 
     UPDATE Sales.SalesOrderDetail
@@ -97,11 +94,11 @@ AS
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM Sales.SalesOrderDetail WHERE SalesOrderID = @OrderID)
     BEGIN
-        PRINT 'The OrderID ' + CAST(@OrderID AS VARCHAR) + ' does not exist';
-        RETURN 1;
+    PRINT 'The OrderID ' + CAST(@OrderID AS VARCHAR) + ' does not exist';
+    RETURN 1;
     END
 
-    SELECT * FROM Sales.SalesOrderDetail WHERE SalesOrderID = @OrderID;
+SELECT * FROM Sales.SalesOrderDetail WHERE SalesOrderID = @OrderID;
 END;
 GO
 
@@ -128,30 +125,28 @@ GO
 CREATE FUNCTION FormatDate_MMDDYYYY (@dt DATETIME)
 RETURNS VARCHAR(10)
 AS
-BEGIN
-    RETURN CONVERT(VARCHAR(10), @dt, 101);
+BEGIN RETURN CONVERT(VARCHAR(10), @dt, 101);
 END;
 GO
 
 CREATE FUNCTION FormatDate_YYYYMMDD (@dt DATETIME)
 RETURNS VARCHAR(8)
 AS
-BEGIN
-    RETURN CONVERT(VARCHAR(8), @dt, 112);
+BEGIN RETURN CONVERT(VARCHAR(8), @dt, 112);
 END;
 GO
 
 
-CREATE VIEW vwCustomerOrders AS
-SELECT 
-    soh.CustomerID,
-    soh.SalesOrderID,
-    soh.OrderDate,
-    sod.ProductID,
-    p.Name AS ProductName,
-    sod.OrderQty AS Quantity,
-    sod.UnitPrice,
-    sod.OrderQty * sod.UnitPrice AS Total
+CREATE view vwCustomerOrders AS
+select  
+soh.CustomerID,
+soh.SalesOrderID,
+soh.OrderDate,
+sod.ProductID,
+p.Name AS ProductName,
+sod.OrderQty AS Quantity,
+sod.UnitPrice,
+sod.OrderQty * sod.UnitPrice AS Total
 FROM Sales.SalesOrderHeader soh
 JOIN Sales.SalesOrderDetail sod ON soh.SalesOrderID = sod.SalesOrderID
 JOIN Production.Product p ON sod.ProductID = p.ProductID;
@@ -171,7 +166,8 @@ SELECT
     p.StandardCost AS UnitPrice,
     p.Size AS QuantityPerUnit,
     s.Name AS CompanyName,
-    c.Name AS CategoryName
+    c.Name AS CategoryName 
+    
 FROM Production.Product p
 JOIN Purchasing.ProductVendor pv ON p.ProductID = pv.ProductID
 JOIN Purchasing.Vendor s ON pv.BusinessEntityID = s.BusinessEntityID
@@ -201,22 +197,19 @@ AFTER INSERT
 AS
 BEGIN
     DECLARE @ProductID INT, @Qty INT, @Available INT;
-
-    SELECT TOP 1 @ProductID = i.ProductID, @Qty = i.OrderQty
+ SELECT TOP 1 @ProductID = i.ProductID, @Qty = i.OrderQty
     FROM inserted i;
-
-    SELECT @Available = SafetyStockLevel FROM Production.Product WHERE ProductID = @ProductID;
-
-    IF @Available < @Qty
+SELECT @Available = SafetyStockLevel FROM Production.Product WHERE ProductID = @ProductID;
+IF @Available < @Qty
     BEGIN
-        RAISERROR('Not enough stock for ProductID %d. Order cannot be completed.', 16, 1, @ProductID);
-        ROLLBACK;
+    RAISERROR('Not enough stock for ProductID %d. Order cannot be completed.', 16, 1, @ProductID);
+     ROLLBACK;
     END
     ELSE
     BEGIN
         UPDATE Production.Product
         SET SafetyStockLevel = SafetyStockLevel - @Qty
         WHERE ProductID = @ProductID;
-    END
+END
 END;
 GO
